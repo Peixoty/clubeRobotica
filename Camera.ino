@@ -39,7 +39,7 @@ const char *password = "NETLAIC01";
 #define IN4 13
 #define SetPoint 50
 
-void startCameraServer();
+//void startCameraServer();
 
 
 
@@ -85,7 +85,7 @@ void setup() {
   }
 
 
-  WiFi.begin(ssid, password);
+  /*WiFi.begin(ssid, password);
   WiFi.setSleep(false);
 
   while (WiFi.status() != WL_CONNECTED) {
@@ -97,7 +97,7 @@ void setup() {
   Serial.print("IP: http://");
   Serial.print(WiFi.localIP());
 
-  startCameraServer();
+  startCameraServer();*/
 
 
   //inicialização motor
@@ -114,8 +114,8 @@ void setup() {
 }
 
 camera_fb_t *fb = NULL;
-#define Faixa_Min 50
-#define Faixa_Max 60
+#define Faixa_Min 43
+#define Faixa_Max 53
 #define TAM_FAIXA Faixa_Max-Faixa_Min
 //#define FaixaG1 5
 //#define FaixaG2 45
@@ -124,49 +124,44 @@ camera_fb_t *fb = NULL;
 #define Faixa_Max2 15
 
 bool pixel(int i, int j) {  // função que verifica o valor do pixel
-    return (fb->buf[i * 96 + j]>150)?true:false;
+    return (fb->buf[i * 96 + j]>144)?true:false;
 }
-void loop() {
-  // Do nothing. Everything is done in another task by the web server
-  fb = esp_camera_fb_get();
-  float F1=mediaLinha(Faixa_Min, Faixa_Max);
-  float F2=mediaLinha(Faixa_Min2, Faixa_Max2);
-  ajusteMotor((F1+F2)/2);
 
-  
-  /*for(int i=0; i<fb->width; i++){
+void printCamera(){
+  for(int i=40; i<60; i++){
     Serial.println();
     for(int j=0; j<fb->width; j++){
       Serial.print(pixel(i,j));
     }
   }
-  Serial.println();
-  delay(2000);*/
+  //delay(2000);
+}
+
+void loop() {
+  // Do nothing. Everything is done in another task by the web server
+  fb = esp_camera_fb_get();
+
+  ajusteMotor(mediaLinha(Faixa_Min,Faixa_Max), fatorErroAngulo());
+
   esp_camera_fb_return(fb);
 
-
 }
 
-int confereExtremidades(){
-  
+void ajusteMotor(float erroLinha, float erroAngulo){
 
-}
-
-void ajusteMotor(float erro){
-
-  if(erro>1 ){
+  if (erroAngulo > 0.2){
+    analogWrite(IN2, SetPoint - 15);
+    analogWrite(IN3, SetPoint + 75*erroAngulo);
+  } else if (erroAngulo < -0.2){ 
+    analogWrite(IN2, SetPoint - 75*erroAngulo);
+    analogWrite(IN3, SetPoint - 15);
+  }else if(erroLinha>0){
     analogWrite(IN2, SetPoint);
-    analogWrite(IN3, SetPoint + erro*(abs(erro)/48));
-  } /*else if (erro>30){
-    analogWrite(IN2, SetPoint/2);
+    analogWrite(IN3, SetPoint + (erroLinha*(abs(erroLinha)/48)));
+  } else if (erroLinha<0){
+    analogWrite(IN2, SetPoint - (erroLinha*(abs(erroLinha)/48)));
     analogWrite(IN3, SetPoint);
-  }*/ else if (erro<-1){
-    analogWrite(IN2, SetPoint - erro*(abs(erro)/48));
-    analogWrite(IN3, SetPoint);
-  } /*else if (erro<-30){
-    analogWrite(IN2, SetPoint);
-    analogWrite(IN3, SetPoint/2);
-  }*/ else{
+  } else{
     analogWrite(IN2, SetPoint);
     analogWrite(IN3, SetPoint);
   }
@@ -187,7 +182,7 @@ float mediaLinha(int i_min, int i_max) { // Acha o centro da linha branca
     float peso = 0;
     float erros[TAM_FAIXA];
 
-    for(int i = i_min+1, z = 0; i < i_max+1; i++, z++){
+    for(int i = i_min, z = 0; i < i_max; i++, z++){
       for (int j = 0; j < fb->width; j++) {
         int val = pixel(i, j);
         soma += val * j;
@@ -200,80 +195,22 @@ float mediaLinha(int i_min, int i_max) { // Acha o centro da linha branca
 }
 
 float fatorErroAngulo(){
-  float erroFx2, hip, sen;
+  float erroFx2, hip, sen, erroFx1, dy;
   
-  erroFx2 = mediaLinha(40,50); // Variação dy || Se negativo, vira a esquerda, se positivo, a direita
+  erroFx2 = mediaLinha(33,43); // Variação dy || Se negativo, vira a esquerda, se positivo, a direita
+  erroFx1 = mediaLinha(43,53);
+  dy=erroFx1-erroFx2;
+  hip = sqrt(pow(dy, 2) + pow(TAM_FAIXA, 2));
 
-  hip = sqrt(pow(erroFx2, TAM_FAIXA));
+  sen = dy/hip; // Se erro = 0, seno do angulo = 0, portanto está seguindo uma linha
 
-  sen = erroFx2/hip; // Se erro = 0, seno do angulo = 0, portanto está seguindo uma linha
-
-  return 2*sen; // Range da função vai pra 2
+  return -sen; // Range da função vai pra 2
 }
 
 bool IDlinha(){
-  int i=0;    //linha
-  int j=0;    //coluna
-  bool ashow=false;
-  int count=0;
+  
 
-  for(int i = 0; i < 96; i++){ // Verifica coluna 1
-    if (pixel(i,0)){ 
-      count++;
-    }else
-      count=0;
-    if (count >= 4){  // Diminui probabilidade de pequenos 1's serem considerados linha
-      return 1; // Linha a esquerda
-    }
-  }
-  count = 0;
-  for(int i = 0; i < 96; i++){ // Verifica coluna 1
-    
-    if (pixel(i,95)){ 
-      count++;
-    }else
-      count=0;
-    if (count >= 4){  // Diminui probabilidade de pequenos 1's serem considerados linha
-      return 2; // Linha a direita
-    }
-  }
-  while((i+1)<fb->width){     
-    ashow=false;   //idica se achou um 1 na linha de baixo
-    while(j<fb->width){
-      
-      if(pixel(i,j)){
-        if(pixel(i+1,j)){   //si tive um 1 logo embaixo do outro
-          ashow=true;
-          break;
-        }
-        else{
-          int p=1;
-          while((j-p)>=0 && (j+p)<fb->width){
-              if(pixel(i,j+p-1))      //confere se tem um 1 na casa diagonal pra direita
-                if(pixel(i+1,j+p)){
-                  j=j+p;
-                  ashow=true;
-                  break;
-                }
 
-              if(pixel(i,j-p+1))      //confere se tem um 1 na casa diagonal da esquerda
-                if(pixel(i+1,j-p)){
-                  j=j-p;
-                  ashow=true;
-                  break;
-                }
-            p++;      //se n achar nenhum um confere expande para os lados
-          }
-        }
-        break;
-      }
-    }
-    if(ashow==false){       //se depois de tudo nao achar nenhum 1 antes de chegar na ultima linha da matriz não existe linha na matriz
-      break;
-    }
-    i++;
-  }
-  return ashow;     //retorna true se achar linha e false se n
 }
 void IDquadrado(){
 
