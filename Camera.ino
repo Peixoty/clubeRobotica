@@ -39,7 +39,7 @@ const char *password = "NETLAIC01";
 #define IN4 13
 #define SetPoint 50
 
-//void startCameraServer();
+void startCameraServer();
 
 
 
@@ -85,7 +85,7 @@ void setup() {
   }
 
 
-  /*WiFi.begin(ssid, password);
+  WiFi.begin(ssid, password);
   WiFi.setSleep(false);
 
   while (WiFi.status() != WL_CONNECTED) {
@@ -97,7 +97,7 @@ void setup() {
   Serial.print("IP: http://");
   Serial.print(WiFi.localIP());
 
-  startCameraServer();*/
+  startCameraServer();
 
 
   //inicialização motor
@@ -129,26 +129,18 @@ bool pixel(int i, int j) {  // função que verifica o valor do pixel
 void loop() {
   // Do nothing. Everything is done in another task by the web server
   fb = esp_camera_fb_get();
-  //float F1=mediaLinha(Faixa_Min, Faixa_Max);
-  //float F2=mediaLinha(Faixa_Min2, Faixa_Max2);
-  //ajusteMotor((F1+F2)/2);
-  //float erro=(mediaLinha(50,60)+fatorErroAngulo()*48)/2;
-  float erroL=mediaLinha(50,60);
-  float erro=erroL*(abs(erroL)/48) + 85*fatorErroAngulo();
-  Serial.println(erro);
-  ajusteMotor(erro);
+  float F1=mediaLinha(Faixa_Min, Faixa_Max);
+  float F2=mediaLinha(Faixa_Min2, Faixa_Max2);
+  ajusteMotor((F1+F2)/2);
 
   
-  /*for(int i=40; i<60; i++){
+  /*for(int i=0; i<fb->width; i++){
     Serial.println();
     for(int j=0; j<fb->width; j++){
       Serial.print(pixel(i,j));
     }
   }
   Serial.println();
-  Serial.println(fatorErroAngulo());
-  Serial.println();
-
   delay(2000);*/
   esp_camera_fb_return(fb);
 
@@ -162,14 +154,14 @@ int confereExtremidades(){
 
 void ajusteMotor(float erro){
 
-  if(erro>1){
+  if(erro>1 ){
     analogWrite(IN2, SetPoint);
-    analogWrite(IN3, SetPoint + erro);
+    analogWrite(IN3, SetPoint + erro*(abs(erro)/48));
   } /*else if (erro>30){
     analogWrite(IN2, SetPoint/2);
     analogWrite(IN3, SetPoint);
   }*/ else if (erro<-1){
-    analogWrite(IN2, SetPoint - erro);
+    analogWrite(IN2, SetPoint - erro*(abs(erro)/48));
     analogWrite(IN3, SetPoint);
   } /*else if (erro<-30){
     analogWrite(IN2, SetPoint);
@@ -208,16 +200,15 @@ float mediaLinha(int i_min, int i_max) { // Acha o centro da linha branca
 }
 
 float fatorErroAngulo(){
-  float erroFx2, hip, sen, erroFx1, dy;
+  float erroFx2, hip, sen;
   
   erroFx2 = mediaLinha(40,50); // Variação dy || Se negativo, vira a esquerda, se positivo, a direita
-  erroFx1 = mediaLinha(50,60);
-  dy=erroFx1-erroFx2;
-  hip = sqrt(pow(dy, 2) + pow(TAM_FAIXA, 2));
 
-  sen = dy/hip; // Se erro = 0, seno do angulo = 0, portanto está seguindo uma linha
+  hip = sqrt(pow(erroFx2, TAM_FAIXA));
 
-  return -sen; // Range da função vai pra 2
+  sen = erroFx2/hip; // Se erro = 0, seno do angulo = 0, portanto está seguindo uma linha
+
+  return 2*sen; // Range da função vai pra 2
 }
 
 bool IDlinha(){
