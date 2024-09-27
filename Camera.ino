@@ -39,9 +39,6 @@ const char *password = "NETLAIC01";
 #define IN4 13
 #define SetPoint 50
 
-//void startCameraServer();
-
-
 
 void setup() {
 
@@ -84,21 +81,7 @@ void setup() {
     return;
   }
 
-
-  /*WiFi.begin(ssid, password);
-  WiFi.setSleep(false);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  
-  Serial.println("Conectado: ");
-  Serial.print("IP: http://");
-  Serial.print(WiFi.localIP());
-
-  startCameraServer();*/
-
+  calibraCores();
 
   //inicialização motor
   pinMode(IN1, OUTPUT); 
@@ -123,8 +106,44 @@ camera_fb_t *fb = NULL;
 #define Faixa_Min2 5
 #define Faixa_Max2 15
 
+
 bool pixel(int i, int j) {  // função que verifica o valor do pixel
     return (fb->buf[i * 96 + j]>144)?true:false;
+}
+
+void calibraCores(){
+  int i, j, z;
+  int soma = 0, count = 0, maiorCor = 0, jMaiorCor = 0;
+  int mediaCores[5];
+
+  fb = esp_camera_fb_get();
+
+  for(j = 0; j < fb->width; j++){
+    if(fb->buf[0 * 96 + j] > maiorCor){
+      maiorCor = fb->buf[0 * 96 + j];
+      jMaiorCor = j;
+    }
+  }
+  esp_camera_fb_return(fb);
+
+  Serial.println(maiorCor);
+  Serial.println(jMaiorCor);
+
+  for(z = 0; z < 5; z++){
+    fb = esp_camera_fb_get();
+
+    for(i = 0; i < 60; i++){
+      for(j = jMaiorCor-8; j < jMaiorCor+8; j++){
+        soma += fb->buf[i * 96 + j];
+        count++;
+      }
+    }
+    mediaCores[z] = soma/count;
+    soma = 0;
+    count = 0;
+    Serial.println(mediaCores[z]);
+    esp_camera_fb_return(fb);
+  }
 }
 
 void printCamera(){
@@ -208,8 +227,6 @@ float fatorErroAngulo(){
 }
 
 bool IDlinha(){
-  
-
 
 }
 void IDquadrado(){
