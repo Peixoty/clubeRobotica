@@ -229,13 +229,49 @@ float fatorErroAngulo(){
 bool IDlinha(){
 
 }
-void IDquadrado(){
+bool idCruzamento(){ // Identifica o cruzamento (Tanto o que forma uma cruz, tanto o que faz só um 90 graus pra um lado). Normalmente os cruzamentos são marcas de fim/inicio desafios
 
 }
 
-void IDfaixa(){
+int contaQuadrados(){
+  int quadrados = 0;
+
+  while(!idCruzamento()){ // Desafio não começou enquanto não ler
+
+    quadrados += idQuadrado();
+    analogWrite(IN2, 40); // Anda lento para reconhecer próximo quadrado
+    analogWrite(IN3, 40);
+
+    while(idQuadrado() != 0){ // Momento que ele vê que o quadrado foi "cortado"
+      continue;
+    }
+  }
+
+  return quadrados;
 
 }
+
+int identificaDesafio(){
+  int quadrados;
+
+  quadrados = contaQuadrados();
+
+  if (idCruzamento()){
+    return 1;  // Desafio da ré -> Ler quadrados na função que resolverá esse desafio
+
+  } else if (quadrados == 1){
+    return 2; // Desafio virar à direita
+
+  } else if(quadrados == 2){
+    return 3; // Desafio pegar primeira saída
+
+  } else if(quadrados == 3){
+    return 4; // Desafio pegar segunda saída
+
+  } else if(quadrados == 4){
+    return 5; // Desafio pegar terceira saída
+
+  }
 
 
 
