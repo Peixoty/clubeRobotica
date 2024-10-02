@@ -240,7 +240,7 @@ bool identificaFaixaPedestre(){
 
   // Faz a contagem dos pixels na linha 10
   for(j = 0; j < fb->width; j++){
-    if(pixel(1,j)){
+    if(pixel(10,j)){
       countBranco++;
     } else {
       countPreto++;
