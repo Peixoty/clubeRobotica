@@ -182,17 +182,22 @@ class Desafios{
 };
 
 Desafios des;
+
 void loop() {
-  float Linhaj, Linhai, r;
+  
   fb = esp_camera_fb_get(); // preenche o vetor com a leitura atual da camera
 
   if (identificaFaixaPedestre()){ // Se a linha for preta, entra pro desafio
+
+    if(SerialBT.available()){
+      SerialBT.println("Faixa de Pedestre");
+    }
     desafioFaixaPedestre();
+
   } else{
-    //ajusteMotor(erroFx1, fatorErroAngulo(erroFx1, erroFx2)); // ajusta o motor com base no erro de centralização e angulação da linha
-    Linhaj = mediaLinha(alturaLeitura, false);
-    Linhai = abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
-    r = raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
+    float Linhaj = mediaLinha(alturaLeitura, false);
+    float Linhai = abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
+    float r = raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
   
     ajusteMotor(r);
   }
@@ -212,11 +217,9 @@ float mediaLinha(int a, bool corLinha){// ponto medio da linha
   for(int j=0; j<fb->width; j++){
     int i=abs(47.5-j)+a;  //j e i fazem uma leitura em v da matriz
     bool x=(corLinha!=pixel(i,j));
-    Serial.print(x);
     som+=x*j;
     peso+=x;
   }
-  Serial.println();
   return som/peso; // media das colunas lidas
 }
 float raio(float i, float j){
@@ -235,6 +238,7 @@ bool identificaFaixaPedestre(){
   int j;
   int countPreto = 0, countBranco = 0;
 
+  // Faz a contagem dos pixels na linha 10
   for(j = 0; j < fb->width; j++){
     if(pixel(1,j)){
       countBranco++;
@@ -251,23 +255,26 @@ bool identificaFaixaPedestre(){
 }
 
 void desafioFaixaPedestre(){
-  bool semLinha = false;
-  int j, count = 0; 
+  bool semLinha = false;  // Inicialmente há linha a ser seguida
+  int j, count = 0;
+  float Linhaj, Linhai, r;
   
-  while(!semLinha){
+  while(!semLinha){ // Enquanto tiver linha a ser seguida
     
-  Linhaj = mediaLinha(10, true);
-  Linhai = abs(47.5-Linhaj)+10; // transformação da media das colunas na media de linhas
-  r = raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
+    // Segue a linha
+    Linhaj = mediaLinha(10, true); // Coloca o vértice do V na linha 10
+    Linhai = abs(47.5-Linhaj)+10; // transformação da media das colunas na media de linhas
+    r = raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
 
-  ajusteMotor(r);
+    ajusteMotor(r);
+
     for(j = 0; j < fb->width; j++){
       if(!pixel(10,j)){ //Se a 10 linha tem muito pixel preto
         count++;
       }
     }
     if (count > 90){  // Se tiver mais de 85 pixeis pretos, ele chegou no fim da linha branca
-      semLinha = true;
+      semLinha = true; // Não Há linha
     } else{
       count = 0;
     }
