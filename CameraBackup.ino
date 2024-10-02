@@ -33,6 +33,7 @@ BluetoothSerial SerialBT;
 #define IN2 15
 #define IN3 12
 #define IN4 13
+#define LED 4
 
 #define SetPoint 50 // vel base do motor
 
@@ -95,6 +96,7 @@ void setup() {
   digitalWrite(IN4, LOW);
   analogWrite(IN3, SetPoint);
 
+  analogWrite(LED, 0);
 }
 
 camera_fb_t *fb = NULL;
@@ -181,18 +183,20 @@ class Desafios{
 
 Desafios des;
 void loop() {
-  
+  float Linhaj, Linhai, r;
   fb = esp_camera_fb_get(); // preenche o vetor com a leitura atual da camera
 
-  //ajusteMotor(erroFx1, fatorErroAngulo(erroFx1, erroFx2)); // ajusta o motor com base no erro de centralização e angulação da linha
-  float Linhaj=mediaLinha(alturaLeitura, false);
-  float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
-  float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
-
-  ajusteMotor(r);
-  //printCamera();
-  //des.checarDesafio();
-  //delay(3000);
+  if (identificaFaixaPedestre()){ // Se a linha for preta, entra pro desafio
+    desafioFaixaPedestre();
+  } else{
+    //ajusteMotor(erroFx1, fatorErroAngulo(erroFx1, erroFx2)); // ajusta o motor com base no erro de centralização e angulação da linha
+    Linhaj = mediaLinha(alturaLeitura, false);
+    Linhai = abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
+    r = raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
+  
+    ajusteMotor(r);
+  }
+  
   esp_camera_fb_return(fb); // esvazia o vetor preenchido pela leitura da camera
 }
 
@@ -227,72 +231,47 @@ float raio(float i, float j){
   return (hip/2)/cos; // raio da circunferencia
 }
 
-/*
-bool countQuadrado(){
-  int count=0;   
-  int ql=0;
-  bool cruzl=false;
-  bool cruz=false;
-  int c=0;
-  for(int i=fb->width-1; i>=0; i--){
-    while(pixel(i,fb->width-1) || pixel(i,fb->width-2)){
-      i--;
-      count++;
-      if (i=0){
-        ql=0;
-        cruzl=false;
-      }
-      else if (count > 26){
-        ql=1;
-        cruzl=false;
-      }
-      else if (count > 6){
-        cruzl=true;
-      }
+bool identificaFaixaPedestre(){
+  int j;
+  int countPreto = 0, countBranco = 0;
+
+  for(j = 0; j < fb->width; j++){
+    if(pixel(1,j)){
+      countBranco++;
+    } else {
+      countPreto++;
     }
-    if(cruzl){
-    cruz=true;
-    }
-    
-    Serial.println();
-    Serial.println(count);
-    count=0;
-    q+=ql;
   }
 
-  if(q==0){
-    if(cruz){
-      c++;
-    }
-    
-    for(int i=fb->width-1; i>=0; i--){
-      int c=0;
-      while(pixel(i,0) || pixel(i,1)){
-        i--;
-        count++;
-        if (i=0){
-        ql=0;
-        }
-        if (count > 30){
-          ql=-1;
-          cruzl=false;
-        }
-        else if (count > 5){
-          cruzl=true;
-        }
-      }
-      if(q==0 && c==1 && cruzl){
-        c++;
-      }
-      count=0;
-      q+=ql;
-    }
+  if(countPreto>=countBranco){
+    return false; // A linha é branca
+  } else if (countBranco > countPreto){
+    return true; // Linha é preta
   }
-  return q;
 }
-*/
 
+void desafioFaixaPedestre(){
+  bool semLinha = false;
+  int j, count = 0; 
+  
+  while(!semLinha){
+    
+  Linhaj = mediaLinha(10, true);
+  Linhai = abs(47.5-Linhaj)+10; // transformação da media das colunas na media de linhas
+  r = raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
 
+  ajusteMotor(r);
+    for(j = 0; j < fb->width; j++){
+      if(!pixel(10,j)){ //Se a 10 linha tem muito pixel preto
+        count++;
+      }
+    }
+    if (count > 90){  // Se tiver mais de 85 pixeis pretos, ele chegou no fim da linha branca
+      semLinha = true;
+    } else{
+      count = 0;
+    }
+  }
 
-
-
+  delay(5000);
+}
