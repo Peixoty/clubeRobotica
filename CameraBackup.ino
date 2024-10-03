@@ -91,10 +91,10 @@ void setup() {
   pinMode(IN4, OUTPUT);
 
   digitalWrite(IN1, LOW);
-  analogWrite(IN2, SetPoint);
+  digitalWrite(IN2, LOW);
 
   digitalWrite(IN4, LOW);
-  analogWrite(IN3, SetPoint);
+  digitalWrite(IN3, LOW);
 
   analogWrite(LED, 0);
 }
