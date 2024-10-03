@@ -34,7 +34,7 @@ BluetoothSerial SerialBT;
 #define IN3 12
 #define IN4 13
 
-#define SetPoint 50 // vel base do motor
+#define SetPoint 60 // vel base do motor
 
 void setup() {
 
@@ -90,10 +90,10 @@ void setup() {
   pinMode(IN4, OUTPUT);
 
   digitalWrite(IN1, LOW);
-  analogWrite(IN2, SetPoint);
+  analogWrite(IN2, LOW);
 
   digitalWrite(IN4, LOW);
-  analogWrite(IN3, SetPoint);
+  analogWrite(IN3, LOW);
 
 }
 
@@ -107,7 +107,7 @@ camera_fb_t *fb = NULL;
 #define Roboj 47.5 // centro do eixo em coordenadas
 #define difRodas (6/0.1) // distancia das rodas em pixels
 
-#define difMotor 0.7 // balanceamento de motor
+#define difMotor 0.78 // balanceamento de motor
 
 void printCamera(){ // printa camera em uma matriz
   for(int i=0; i<fb->width; i++){
@@ -119,6 +119,22 @@ void printCamera(){ // printa camera em uma matriz
   Serial.println();
   delay(2000);
 }
+void printCameraBT(){
+  for(int i=0; i<fb->width; i++){
+    for(int j=0; j<fb->width; j++){
+      if (SerialBT.available()) {
+        SerialBT.print(pixel(i,j));
+      }
+    }
+    if (SerialBT.available()) {
+        SerialBT.println();
+      }
+  }
+  if (SerialBT.available()) {
+    SerialBT.println();
+  }
+  //delay(2000);
+}
 
 
 bool pixel(int i, int j) {  // função que verifica o valor do pixel
@@ -126,30 +142,51 @@ bool pixel(int i, int j) {  // função que verifica o valor do pixel
 }
 
 class Desafios{
-  int q=0, quad=0;
-  float qcord=0;
-  bool cruz=false;
+  int quad=0;
+  bool cruz=false, qlidoE=false;
 
   public:
   void checarDesafio(){
-    countQuadrado();
-    
+    /*
+    if (SerialBT.available()) {
+
+      SerialBT.print("quad: ");
+      SerialBT.println(quad);
+      SerialBT.print("cruz: ");
+      SerialBT.println(cruz);
+    }*/
+    if(qlidoE){
+      for(int i=fb->width-1; i>=fb->width-3; i--){
+        for(int j=fb->width-1; j>=fb->width-2; j--){
+          if(pixel(i,j)){
+            qlidoE=false;
+          }
+        }
+      }
+    }
+    else{
+      countQuadrado(false);
+    }
     if(cruz){
-      quad=0;
-      qcord=0;
+      if(quad==0){
+        
+      }
+      else if(abs(quad)==1){
+        jmyself();
+      }
+      else if(abs(quad)>1){
+
+      }
     }
   }
   private:
-  void countQuadrado(){
+  void countQuadrado(bool sentido){
     for(int i=fb->width-1; i>=0; i--){
       int count=0;
-      q=0;
       while(pixel(i,fb->width-1) || pixel(i,fb->width-2)){
         count++;
-        q+=i;
         if(i<=2 || i>=fb->width-3){
           count=0;
-          q=0;
           if(i>=fb->width-3){
             while(pixel(i,fb->width-1) || pixel(i,fb->width-2)){
               i--;
@@ -162,20 +199,27 @@ class Desafios{
         }
         i--;
       }
-      if(qcord>i+1 && qcord<=i+1+count){
-        count=0;
-      }
       if(count!=0){
         if(count>25){
           quad++;
-          qcord=q/count;
-          break;
+          qlidoE=true;
         }
         else if(count>7){
           cruz=true;
         }
       }
     }
+  }
+
+  void jmyself(){
+    analogWrite(IN2, 25-((quad/abs(quad))*25));
+    analogWrite(IN3, 25+((quad/abs(quad))*25));
+    delay(1000);
+    analogWrite(IN2, 60);
+    analogWrite(IN3, 60);
+    delay(200);
+    quad=0;
+    cruz=false;
   }
 };
 
@@ -188,11 +232,12 @@ void loop() {
   float Linhaj=mediaLinha(alturaLeitura, false);
   float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
   float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
-
   ajusteMotor(r);
+  //printCameraBT();
   //printCamera();
-  //des.checarDesafio();
-  //delay(3000);
+  //analogWrite(IN2, SetPoint*0.78);
+  //analogWrite(IN3, SetPoint);
+  des.checarDesafio();
   esp_camera_fb_return(fb); // esvazia o vetor preenchido pela leitura da camera
 }
 
@@ -201,18 +246,15 @@ void ajusteMotor(float r){
   
   analogWrite(IN3, SetPoint*abs((r-difRodas)/r));
 }
-// mediaLinha original
 float mediaLinha(int a, bool corLinha){// ponto medio da linha
   int som=0; // somatorio de colunas
   int peso=0; // numero de uns
   for(int j=0; j<fb->width; j++){
     int i=abs(47.5-j)+a;  //j e i fazem uma leitura em v da matriz
     bool x=(corLinha!=pixel(i,j));
-    Serial.print(x);
     som+=x*j;
     peso+=x;
   }
-  Serial.println();
   return som/peso; // media das colunas lidas
 }
 float raio(float i, float j){
