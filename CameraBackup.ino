@@ -90,17 +90,20 @@ void setup() {
   pinMode(IN3, OUTPUT); 
   pinMode(IN4, OUTPUT);
 
+  //LED câmera
+  pinMode(LED, OUTPUT);
+
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, LOW);
 
   digitalWrite(IN4, LOW);
   digitalWrite(IN3, LOW);
 
-  analogWrite(LED, 0);
+  digitalWrite(LED, LOW);
 }
 
 camera_fb_t *fb = NULL;
-#define disLeituras 20 // distanciamento entre leituras
+
 #define alturaLeitura 45 // maximo de 48
 #define Carlos 150 // definição doq é preto
 
@@ -112,10 +115,10 @@ camera_fb_t *fb = NULL;
 #define difMotor 0.7 // balanceamento de motor
 
 void printCamera(){ // printa camera em uma matriz
-  for(int i=0; i<fb->width; i++){
+  for(int i=40; i<41; i++){
     Serial.println();
     for(int j=0; j<fb->width; j++){
-      Serial.print(pixel(i,j));
+      Serial.print(pixel(40,j));
     }
   }
   Serial.println();
@@ -184,14 +187,12 @@ class Desafios{
 Desafios des;
 
 void loop() {
+
+  analogWrite(LED, 0);
   
   fb = esp_camera_fb_get(); // preenche o vetor com a leitura atual da camera
 
-  if (identificaFaixaPedestre()){ // Se a linha for preta, entra pro desafio
-
-    if(SerialBT.available()){
-      SerialBT.println("Faixa de Pedestre");
-    }
+  if (identificaInversaoCores()){ // Se a linha for preta, entra pro desafio
     desafioFaixaPedestre();
 
   } else{
@@ -234,7 +235,7 @@ float raio(float i, float j){
   return (hip/2)/cos; // raio da circunferencia
 }
 
-bool identificaFaixaPedestre(){
+bool identificaInversaoCores(){
   int j;
   int countPreto = 0, countBranco = 0;
 
@@ -254,13 +255,49 @@ bool identificaFaixaPedestre(){
   }
 }
 
+int identificaFaixaPedestre(){ 
+  int z, j, ultimaFaixaJ = 0, count = 0;
+
+  for(j = ultimaFaixaJ; j < fb->width-2; j++){  // Busca por um pixel branco
+    if(pixel(40,j) && pixel(40,j+1) && pixel(40,j+2)){ // Achou uma faixa
+      count++;
+      printCamera();
+      for(z = j; z < fb->width-2; z++){ // Busca por um pixel preto
+        if(!pixel(40,z) && !pixel(40,z+1) && !pixel(40,z+2)){  // Achou um entre faixa (preto)
+          ultimaFaixaJ = z; // Atualiza de onde o próximo J vai começar
+          Serial.println(ultimaFaixaJ);
+          break;
+        }
+      }
+    }
+    
+    if(count > 1){
+      Serial.println("Faixa de Pedestre");
+      return 1; // 1 representa a faixa de pedestre
+    } 
+  }
+
+  if (count == 1){
+      Serial.println("Volta a seguir a linha");
+      return 2; // 2 representa a linha que ele deve voltar a seguir
+  } else if (count == 0){
+      Serial.println("Tudo preto");
+      return 0; // 0 representa que não há linha a ser seguida
+  }
+
+}
+
 void desafioFaixaPedestre(){
   bool semLinha = false;  // Inicialmente há linha a ser seguida
-  int j, count = 0;
+  int j, count = 0, estadoLinha;
   float Linhaj, Linhai, r;
+
+  esp_camera_fb_return(fb);
   
   while(!semLinha){ // Enquanto tiver linha a ser seguida
-    
+    fb = esp_camera_fb_get();
+
+    Serial.println("Reconheceu desafio");
     // Segue a linha
     Linhaj = mediaLinha(10, true); // Coloca o vértice do V na linha 10
     Linhai = abs(47.5-Linhaj)+10; // transformação da media das colunas na media de linhas
@@ -269,16 +306,38 @@ void desafioFaixaPedestre(){
     ajusteMotor(r);
 
     for(j = 0; j < fb->width; j++){
-      if(!pixel(10,j)){ //Se a 10 linha tem muito pixel preto
+      if(!pixel(20,j)){ //Se a 10 linha tem muito pixel preto
         count++;
       }
     }
-    if (count > 90){  // Se tiver mais de 85 pixeis pretos, ele chegou no fim da linha branca
+
+    if (count > 90){  // Se tiver mais de 90 pixeis pretos, ele chegou no fim da linha branca
+      Serial.println("Espera 5 segundos");
       semLinha = true; // Não Há linha
+
     } else{
       count = 0;
     }
+
+    esp_camera_fb_return(fb);
   }
 
+  analogWrite(IN2, 0);
+  analogWrite(IN3, 0);
   delay(5000);
+
+  while(semLinha){  // Enquanto ele não estiver enxergando a linha
+    fb = esp_camera_fb_get();
+    estadoLinha = identificaFaixaPedestre();
+
+    if(estadoLinha == 0 || estadoLinha == 1){ // Se tiver faixa de pedestre ou tudo preto, continua reto
+      analogWrite(IN2, SetPoint);
+      analogWrite(IN3, SetPoint);
+      esp_camera_fb_return(fb);
+    } else if (estadoLinha == 2){ // Se achar a linha de volta, volta a seguir linha
+      esp_camera_fb_return(fb);
+      return;
+    }
+
+  }
 }
