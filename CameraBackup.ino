@@ -256,20 +256,23 @@ bool identificaInversaoCores(){
 }
 
 int identificaFaixaPedestre(){ 
-  int z, j = 0, ultimaFaixaJ = 0, count = 0;
+  int z = 0, j = 0, count = 0;
+  bool aux = true;
 
-  while(z < fb->width-2){
+  while(aux){
 
     if(pixel(40,j) && pixel(40,j+1) && pixel(40,j+2)){ // Achou uma faixa se encontrar 3 pixels brancos consecutivos 00001111111111100000000001111111
       count++;
       printCamera();
       for(z = j; z < fb->width-2; z++){ // Busca por um pixel preto
         if(!pixel(40,z) && !pixel(40,z+1) && !pixel(40,z+2)){  // Achou um entre faixa (preto)
-          ultimaFaixaJ = z; // Atualiza de onde o próximo J vai começar
-          Serial.println(ultimaFaixaJ);
+          j = z; // Atualiza de onde o próximo J vai começar
           break;
         }
-      }
+        if(z == fb->width-3){ // Se z chegar no limite, quebra o while
+          aux = false;
+        }
+      }   
     }
 
     j++;
