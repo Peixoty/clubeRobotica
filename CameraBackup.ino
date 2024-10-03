@@ -256,10 +256,11 @@ bool identificaInversaoCores(){
 }
 
 int identificaFaixaPedestre(){ 
-  int z, j, ultimaFaixaJ = 0, count = 0;
+  int z, j = 0, ultimaFaixaJ = 0, count = 0;
 
-  for(j = ultimaFaixaJ; j < fb->width-2; j++){  // Busca por um pixel branco
-    if(pixel(40,j) && pixel(40,j+1) && pixel(40,j+2)){ // Achou uma faixa
+  while(z < fb->width-2){
+
+    if(pixel(40,j) && pixel(40,j+1) && pixel(40,j+2)){ // Achou uma faixa se encontrar 3 pixels brancos consecutivos 00001111111111100000000001111111
       count++;
       printCamera();
       for(z = j; z < fb->width-2; z++){ // Busca por um pixel preto
@@ -270,6 +271,8 @@ int identificaFaixaPedestre(){
         }
       }
     }
+
+    j++;
     
     if(count > 1){
       Serial.println("Faixa de Pedestre");
