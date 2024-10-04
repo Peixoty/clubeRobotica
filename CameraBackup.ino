@@ -29,12 +29,12 @@ BluetoothSerial SerialBT;
 #define HREF_GPIO_NUM 23
 #define PCLK_GPIO_NUM 22
 
-#define IN1 2
-#define IN2 15
+#define IN1 4
+#define IN2 2
 #define IN3 12
 #define IN4 13
 
-#define SetPoint 60 // vel base do motor
+#define SetPoint 40 // vel base do motor
 
 void setup() {
 
@@ -90,10 +90,10 @@ void setup() {
   pinMode(IN4, OUTPUT);
 
   digitalWrite(IN1, LOW);
-  analogWrite(IN2, LOW);
+  digitalWrite(IN2, LOW);
 
   digitalWrite(IN4, LOW);
-  analogWrite(IN3, LOW);
+  digitalWrite(IN3, LOW);
 
 }
 
@@ -107,7 +107,7 @@ camera_fb_t *fb = NULL;
 #define Roboj 47.5 // centro do eixo em coordenadas
 #define difRodas (6/0.1) // distancia das rodas em pixels
 
-#define difMotor 0.78 // balanceamento de motor
+#define difMotor 0.63 // balanceamento de motor
 
 void printCamera(){ // printa camera em uma matriz
   for(int i=0; i<fb->width; i++){
@@ -142,53 +142,71 @@ bool pixel(int i, int j) {  // função que verifica o valor do pixel
 }
 
 class Desafios{
-  int quad=0;
-  bool cruz=false, qlidoE=false;
+  int quad=0, qlido=0;
+  bool cruz=false;
 
   public:
   void checarDesafio(){
-    /*
-    if (SerialBT.available()) {
-
-      SerialBT.print("quad: ");
-      SerialBT.println(quad);
-      SerialBT.print("cruz: ");
-      SerialBT.println(cruz);
-    }*/
-    if(qlidoE){
+    if(qlido==1){
       for(int i=fb->width-1; i>=fb->width-3; i--){
         for(int j=fb->width-1; j>=fb->width-2; j--){
           if(pixel(i,j)){
-            qlidoE=false;
+            qlido=0;
           }
         }
       }
     }
-    else{
-      countQuadrado(false);
+    else if(qlido==-1){
+      for(int i=fb->width-1; i>=fb->width-3; i--){
+        for(int j=0; j<=1; j++){
+          if(pixel(i,j)){
+            qlido=0;
+          }
+        }
+      }
     }
+    else{ 
+      if(quad>=0){
+        countQuadrado(true); // true lado da direita // false lado da esquerda
+      }
+      if(quad<=0){
+        cruz=false;
+        countQuadrado(false); // se for direita quad é positivo se for esquerda quad é negativo
+      }
+    }
+
     if(cruz){
+      esp_camera_fb_return(fb);
       if(quad==0){
-        
+        fb = esp_camera_fb_get();
+        cruz = confirmCruz(true);
+        esp_camera_fb_return(fb);
+        if(cruz){
+          idRe();
+        }
       }
       else if(abs(quad)==1){
-        jmyself();
+        jmyself(quad/abs(quad));
       }
       else if(abs(quad)>1){
-
+        rot();
       }
+      fb = esp_camera_fb_get();
+      qlido=0;
+      quad=0;
+      cruz=false;
     }
   }
   private:
-  void countQuadrado(bool sentido){
+  void countQuadrado(int sentido){// true lado da direita // false lado da esquerda
     for(int i=fb->width-1; i>=0; i--){
       int count=0;
-      while(pixel(i,fb->width-1) || pixel(i,fb->width-2)){
+      while(pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)){
         count++;
         if(i<=2 || i>=fb->width-3){
           count=0;
           if(i>=fb->width-3){
-            while(pixel(i,fb->width-1) || pixel(i,fb->width-2)){
+            while(pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)){
               i--;
             }
           }
@@ -201,8 +219,8 @@ class Desafios{
       }
       if(count!=0){
         if(count>25){
-          quad++;
-          qlidoE=true;
+          quad+=2*sentido-1;
+          qlido=2*sentido-1;
         }
         else if(count>7){
           cruz=true;
@@ -211,15 +229,105 @@ class Desafios{
     }
   }
 
-  void jmyself(){
-    analogWrite(IN2, 25-((quad/abs(quad))*25));
-    analogWrite(IN3, 25+((quad/abs(quad))*25));
+  bool confirmCruz(int sentido){// true lado da direita // false lado da esquerda
+    for(int i=fb->width-1; i>=0; i--){
+      int count=0;
+      while(pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)){
+        count++;
+        i--;
+      }
+      if(count>7){
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void jmyself(int sentido){ // negativo direita // positivo esquerda
+    analogWrite(IN2, (25-(sentido*25))*difMotor);
+    analogWrite(IN3, 25+(sentido*25));
     delay(1000);
     analogWrite(IN2, 60);
     analogWrite(IN3, 60);
     delay(200);
-    quad=0;
-    cruz=false;
+  }
+
+  void rot(){
+    bool s;
+    if(quad>0){
+      s=true;
+    }
+    else{
+      s=false;
+    }
+    jmyself(quad/abs(quad));
+    while(abs(quad)>1){
+      fb = esp_camera_fb_get();
+      float Linhaj=mediaLinha(alturaLeitura, false);
+      float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
+      float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
+      ajusteMotor(r);
+      if(confirmCruz(s)){
+        quad-=(quad/abs(quad));
+      }
+      esp_camera_fb_return(fb);
+    }
+    jmyself(quad);
+  }
+
+  void idRe(){
+    while(cruz){
+      fb = esp_camera_fb_get();
+      float Linhaj=mediaLinha(alturaLeitura, false);
+      float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
+      float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
+      ajusteMotor(r);
+      cruz=false;
+      countQuadrado(true);
+      if(quad==0){
+        countQuadrado(false);
+      }
+      cruz = confirmCruz(true);
+      if(!cruz){
+        cruz = confirmCruz(false);
+      }
+      esp_camera_fb_return(fb);
+      if(quad!=0){
+        marchaRe();
+      }
+    }
+  }
+
+  void marchaRe(){
+    int count=0;
+    while(count<4){
+      count=0;
+      fb = esp_camera_fb_get();
+      float Linhaj=mediaLinha(alturaLeitura, false);
+      float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
+      float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
+      ajusteMotor(r);
+      for(int i=0; i<30; i++){
+        count+=pixel(i, (47.5-47.5*quad));
+      }
+      esp_camera_fb_return(fb);
+    }
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW);
+    analogWrite(IN1, SetPoint*difMotor);
+    analogWrite(IN4, SetPoint);
+    count=0;
+    while(count<4){
+      count=0;
+      fb = esp_camera_fb_get();
+      for(int i=60; i<fb->width; i++){
+        count+=pixel(i, (47.5-47.5*quad));
+      }
+      esp_camera_fb_return(fb);
+    }
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN4, LOW);
+    jmyself(-quad);
   }
 };
 
@@ -227,7 +335,7 @@ Desafios des;
 void loop() {
   
   fb = esp_camera_fb_get(); // preenche o vetor com a leitura atual da camera
-
+  des.checarDesafio();
   //ajusteMotor(erroFx1, fatorErroAngulo(erroFx1, erroFx2)); // ajusta o motor com base no erro de centralização e angulação da linha
   float Linhaj=mediaLinha(alturaLeitura, false);
   float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
@@ -235,16 +343,18 @@ void loop() {
   ajusteMotor(r);
   //printCameraBT();
   //printCamera();
-  //analogWrite(IN2, SetPoint*0.78);
+  //analogWrite(IN2, SetPoint*0.63);
   //analogWrite(IN3, SetPoint);
-  des.checarDesafio();
   esp_camera_fb_return(fb); // esvazia o vetor preenchido pela leitura da camera
 }
 
 void ajusteMotor(float r){
-  analogWrite(IN2, SetPoint*abs((r+difRodas)/r)*difMotor);
-  
-  analogWrite(IN3, SetPoint*abs((r-difRodas)/r));
+  if (r>0){
+    analogWrite(IN2, SetPoint*abs((r+difRodas*2)/r)*difMotor);
+  }
+  else if (r<0){
+  analogWrite(IN3, SetPoint*abs((r-difRodas*2)/r));
+  }
 }
 float mediaLinha(int a, bool corLinha){// ponto medio da linha
   int som=0; // somatorio de colunas
@@ -255,7 +365,7 @@ float mediaLinha(int a, bool corLinha){// ponto medio da linha
     som+=x*j;
     peso+=x;
   }
-  return som/peso; // media das colunas lidas
+  return (peso == 0)? 0:som/peso; // media das colunas lidas
 }
 float raio(float i, float j){
   float di, dj, hip, cos, r;
