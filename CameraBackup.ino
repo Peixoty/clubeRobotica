@@ -248,6 +248,7 @@ class Desafios{
 
   void jmyself(int sentido){ // negativo direita // positivo esquerda
     float linha;
+    bool direcaoGiro = (sentido == 1)? true:false;
     esp_camera_fb_return(fb);
     // Anda por 100ms confere se a linha está alinhada. Repete até ver uma linha com media na coluna 48
     do{  
@@ -257,7 +258,7 @@ class Desafios{
       fb = esp_camera_fb_get();
       linha = mediaLinha(30,false);
       esp_camera_fb_return(fb);
-    } while(linha > 56 || linha < 40); // Enquanto a linha não estiver num range de 16 do centro, continua virando
+    } while((linha < (40 - direcaoGiro*5)) || (linha > (56 + !direcaoGiro*5))); // Enquanto a linha não estiver num range de 16 do centro, continua virando
     fb = esp_camera_fb_get();
   }
 
