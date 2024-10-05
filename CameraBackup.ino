@@ -247,12 +247,11 @@ class Desafios{
   }
 
   void jmyself(int sentido){ // negativo direita // positivo esquerda
-    analogWrite(IN2, (25-(sentido*25))*difMotor);
-    analogWrite(IN3, 25+(sentido*25));
-    delay(1000);
-    analogWrite(IN2, 60);
-    analogWrite(IN3, 60);
-    delay(200);
+    float linha = mediaLinha(30,false);
+    while(linha > 56 || linha < 40){  // Enquanto a linha não estiver num range de 16 do centro, continua virando
+      analogWrite(IN2, (25-(sentido*25))*difMotor);
+      analogWrite(IN3, 25+(sentido*25));
+    }
   }
 
   void rot(){
