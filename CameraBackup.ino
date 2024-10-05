@@ -247,11 +247,18 @@ class Desafios{
   }
 
   void jmyself(int sentido){ // negativo direita // positivo esquerda
-    float linha = mediaLinha(30,false);
-    while(linha > 56 || linha < 40){  // Enquanto a linha não estiver num range de 16 do centro, continua virando
+    float linha;
+    esp_camera_fb_return(fb);
+    // Anda por 100ms confere se a linha está alinhada. Repete até ver uma linha com media na coluna 48
+    do{  
       analogWrite(IN2, (25-(sentido*25))*difMotor);
       analogWrite(IN3, 25+(sentido*25));
-    }
+      delay(100);
+      fb = esp_camera_fb_get();
+      linha = mediaLinha(30,false);
+      esp_camera_fb_return(fb);
+    } while(linha > 56 || linha < 40); // Enquanto a linha não estiver num range de 16 do centro, continua virando
+    fb = esp_camera_fb_get();
   }
 
   void rot(){
