@@ -269,7 +269,7 @@ class Desafios{
   void jmyself(int sentido){ // negativo direita // positivo esquerda
     float linha;
     bool direcaoGiro = (sentido == 1)? true:false;
-    esp_camera_fb_return(fb);
+    
     // Anda por 100ms confere se a linha está alinhada. Repete até ver uma linha com media na coluna 48
     do{  
       analogWrite(IN2, (25-(sentido*25))*difMotor);
@@ -280,7 +280,6 @@ class Desafios{
       esp_camera_fb_return(fb);
       SerialBT.println(linha);
     } while((linha > (56 + !direcaoGiro*5)) || (linha < (40 - direcaoGiro*5))); // Enquanto a linha não estiver num range de 16 do centro, continua virando
-    fb = esp_camera_fb_get();
   }
 
   void rot(){
