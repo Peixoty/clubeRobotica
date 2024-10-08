@@ -501,9 +501,3 @@ float raio(float i, float j){
   
   return (hip/2)/cos; // raio da circunferencia
 }
-
-
-
-
-
-
