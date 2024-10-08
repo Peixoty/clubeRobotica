@@ -394,7 +394,8 @@ class Desafios{
       }
     }
 
-    if (countPreto >= countBranco) {
+    //if (countPreto >= countBranco) {
+    if (countBranco/(fb->width) >= 0.78) {
       return false;  // A linha é branca
     } else if (countBranco > countPreto) {
       return true;  // Linha é preta
@@ -499,15 +500,10 @@ void loop() {
   
   fb = esp_camera_fb_get(); // preenche o vetor com a leitura atual da camera
   des.checarDesafio();
-  //ajusteMotor(erroFx1, fatorErroAngulo(erroFx1, erroFx2)); // ajusta o motor com base no erro de centralização e angulação da linha
   float Linhaj=mediaLinha(alturaLeitura, false);
   float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
   float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
   ajusteMotor(r);
-  //printCameraBT();
-  //printCamera();
-  //analogWrite(IN2, SetPoint*0.8);
-  //analogWrite(IN3, SetPoint);
   esp_camera_fb_return(fb); // esvazia o vetor preenchido pela leitura da camera
 }
 
