@@ -177,12 +177,12 @@ class Desafios{
       }
       else if(abs(quad)==1){
         SerialBT.println("90graus");
-        digitalWrite(IN2, LOW);
-        digitalWrite(IN3, LOW);
+        analogWrite(IN2, LOW);
+        analogWrite(IN3, LOW);
         delay(1000);
         jmyself(quad/abs(quad));
-        digitalWrite(IN2, LOW);
-        digitalWrite(IN3, LOW);
+        analogWrite(IN2, LOW);
+        analogWrite(IN3, LOW);
         delay(1000);
       }
       else if(abs(quad)>1){
