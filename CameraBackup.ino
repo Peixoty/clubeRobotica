@@ -9,7 +9,7 @@
 #define CAMERA_MODEL_AI_THINKER  // Has PSRAM
 #include "camera_pins.h"
 
-BluetoothSerial SerialBT;
+//BluetoothSerial SerialBT;
 
 //Configuração dos pinos da câmera
 #define PWDN_GPIO_NUM 32
@@ -34,7 +34,7 @@ BluetoothSerial SerialBT;
 #define IN3 12
 #define IN4 13
 
-#define SetPoint 35 // vel base do motor
+#define SetPoint 30 // vel base do motor
 
 void setup() {
 
@@ -76,13 +76,13 @@ void setup() {
     Serial.printf("Camera init failed with error 0x%x", err);
     return;
   }
-
+  /*
   if(!SerialBT.begin("ESP32CAM")) {
     Serial.println("Erro ao iniciar o Bluetooth");
   } else {
     Serial.println("Bluetooth iniciado com sucesso. Agora você pode parear com o ESP32CAM.");
   }
-
+  */
   //inicialização motor
   pinMode(IN1, OUTPUT); 
   pinMode(IN2, OUTPUT); 
@@ -158,44 +158,22 @@ class Desafios{
         countQuadrado(false); // se for direita quad é positivo se for esquerda quad é negativo
       }
     }
-    Serial.print(qlido);
-    Serial.print(" / ");
-    Serial.print(quad);
-    Serial.print(" / ");
-    Serial.println(cruz);
+
     if(cruz){
       esp_camera_fb_return(fb);
       if(quad==0){
-        SerialBT.println("Cruz?");
         fb = esp_camera_fb_get();
         cruz = confirmCruz(true);
         esp_camera_fb_return(fb);
         if(cruz){
-          SerialBT.println("Re?");
           idRe();
         }
       }
       else if(abs(quad)==1){
-        SerialBT.println("90graus");
-        analogWrite(IN2, LOW);
-        analogWrite(IN3, LOW);
-        delay(1000);
         jmyself(quad/abs(quad));
-        analogWrite(IN2, LOW);
-        analogWrite(IN3, LOW);
-        delay(1000);
       }
       else if(abs(quad)>1){
-        SerialBT.println("rotatoria");
-        analogWrite(IN2, 0);
-        analogWrite(IN3, 0);
-        SerialBT.print("parar");
-        delay(1000);
         rot();
-        analogWrite(IN2, 0);
-        analogWrite(IN3, 0);
-        SerialBT.print("90");
-        delay(1000);
       }
       fb = esp_camera_fb_get();
       qlido=0;
@@ -207,10 +185,6 @@ class Desafios{
   }
   private:
   void countQuadrado(int sentido){// true lado da direita // false lado da esquerda
-    for(int i=fb->width-1; i>=0; i--){
-      Serial.print(pixel(i, (fb->width-1)*sentido));
-    }
-    Serial.println();
     for(int i=fb->width-1; i>=0; i--){
       int count=0;
       while(pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)){
@@ -244,8 +218,7 @@ class Desafios{
   bool confirmCruz(int sentido){// true lado da direita // false lado da esquerda
     for(int i=fb->width-1; i>=0; i--){
       int count=0;
-      printCamera();
-      while(pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)){
+      while((pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)) && i!=0){
         count++;
         i--;
       }
@@ -269,16 +242,15 @@ class Desafios{
   void jmyself(int sentido){ // negativo direita // positivo esquerda
     float linha;
     bool direcaoGiro = (sentido == 1)? true:false;
-    
     // Anda por 100ms confere se a linha está alinhada. Repete até ver uma linha com media na coluna 48
     do{  
-      analogWrite(IN2, (25-(sentido*25))*difMotor);
-      analogWrite(IN3, 25+(sentido*25));
-      delay(700);
+      analogWrite(IN2, (55-(sentido*25))*difMotor);
+      analogWrite(IN3, 55+(sentido*25));
+      delay(300);
       fb = esp_camera_fb_get();
       linha = mediaLinha(30,false);
       esp_camera_fb_return(fb);
-      SerialBT.println(linha);
+      //SerialBT.println(linha);
     } while((linha > (56 + !direcaoGiro*5)) || (linha < (40 - direcaoGiro*5))); // Enquanto a linha não estiver num range de 16 do centro, continua virando
   }
 
@@ -291,20 +263,13 @@ class Desafios{
       s=false;
     }
     jmyself(quad/abs(quad));
-    analogWrite(IN2, 0);
-    analogWrite(IN3, 0);
-    SerialBT.print("90");
-    delay(1000);
-    
-    fb = esp_camera_fb_get();
-    esp_camera_fb_return(fb);
-    
+    //fb = esp_camera_fb_get();
+    //esp_camera_fb_return(fb);
     while(abs(quad)>1){
       fb = esp_camera_fb_get();
       float Linhaj=mediaLinha(alturaLeitura, false);
       float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
       float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
-      printCamera();
       ajusteMotor(r);
       cruz=confirmCruz(s);
       if(cruz){
@@ -313,10 +278,6 @@ class Desafios{
       Serial.println(quad);
       esp_camera_fb_return(fb);
     }
-    analogWrite(IN2, 0);
-    analogWrite(IN3, 0);
-    SerialBT.print("parar");
-    delay(1000);
     jmyself(quad);
   }
 
@@ -360,8 +321,8 @@ class Desafios{
       Serial.print(count);
       esp_camera_fb_return(fb);
     }
-    digitalWrite(IN2, LOW);
-    digitalWrite(IN3, LOW);
+    analogWrite(IN2, 0);
+    analogWrite(IN3, 0);
     delay(1000);
     analogWrite(IN1, SetPoint*difMotor);
     analogWrite(IN4, SetPoint);
@@ -428,16 +389,16 @@ class Desafios{
       }
 
       if (count > 1) {
-        SerialBT.println("Faixa de Pedestre");
+        //SerialBT.println("Faixa de Pedestre");
         return 1;  // 1 representa a faixa de pedestre
       }
     }
 
     if (count == 1) {
-      SerialBT.println("Volta a seguir a linha");
+      //SerialBT.println("Volta a seguir a linha");
       return 2;  // 2 representa a linha que ele deve voltar a seguir
     } else if (count == 0) {
-      SerialBT.println("Tudo preto");
+      //SerialBT.println("Tudo preto");
       return 0;  // 0 representa que não há linha a ser seguida
     }
   }
@@ -500,10 +461,15 @@ void loop() {
   
   fb = esp_camera_fb_get(); // preenche o vetor com a leitura atual da camera
   des.checarDesafio();
+  //ajusteMotor(erroFx1, fatorErroAngulo(erroFx1, erroFx2)); // ajusta o motor com base no erro de centralização e angulação da linha
   float Linhaj=mediaLinha(alturaLeitura, false);
   float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
   float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
   ajusteMotor(r);
+  //printCameraBT();
+  //printCamera();
+  //analogWrite(IN2, SetPoint*0.8);
+  //analogWrite(IN3, SetPoint);
   esp_camera_fb_return(fb); // esvazia o vetor preenchido pela leitura da camera
 }
 
