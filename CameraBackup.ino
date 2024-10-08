@@ -34,7 +34,7 @@ BluetoothSerial SerialBT;
 #define IN3 12
 #define IN4 13
 
-#define SetPoint 40 // vel base do motor
+#define SetPoint 35 // vel base do motor
 
 void setup() {
 
@@ -107,7 +107,7 @@ camera_fb_t *fb = NULL;
 #define Roboj 47.5 // centro do eixo em coordenadas
 #define difRodas (6/0.1) // distancia das rodas em pixels
 
-#define difMotor 0.63 // balanceamento de motor
+#define difMotor 0.8 // balanceamento de motor
 
 void printCamera(){ // printa camera em uma matriz
   for(int i=0; i<fb->width; i++){
@@ -119,22 +119,7 @@ void printCamera(){ // printa camera em uma matriz
   Serial.println();
   delay(2000);
 }
-void printCameraBT(){
-  for(int i=0; i<fb->width; i++){
-    for(int j=0; j<fb->width; j++){
-      if (SerialBT.available()) {
-        SerialBT.print(pixel(i,j));
-      }
-    }
-    if (SerialBT.available()) {
-        SerialBT.println();
-      }
-  }
-  if (SerialBT.available()) {
-    SerialBT.println();
-  }
-  //delay(2000);
-}
+
 
 bool pixel(int i, int j) {  // função que verifica o valor do pixel
     return (fb->buf[i * 96 + j]>Carlos)?true:false; // converte o valor de 0 a 255 em booleano sendo os pontos brancos=1
@@ -145,19 +130,17 @@ class Desafios{
   bool cruz=false;
 
   public:
-  void checarDesafio(){ // Descobre qual o desafio a ser cumprido
-    if(qlido==1){ // Quadrado lado direito
-    // Não deixa contar o mesmo quadrado
-      for(int i=fb->width-1; i>=fb->width-3; i--){ 
-        for(int j=fb->width-1; j>=fb->width-2; j--){ 
+  void checarDesafio(){
+    if(qlido==1){
+      for(int i=fb->width-1; i>=fb->width-3; i--){
+        for(int j=fb->width-1; j>=fb->width-2; j--){
           if(pixel(i,j)){
             qlido=0;
           }
         }
       }
     }
-    else if(qlido==-1){ // Quadrado lado esquerdo
-    // Não deixa contar o mesmo quadrado
+    else if(qlido==-1){
       for(int i=fb->width-1; i>=fb->width-3; i--){
         for(int j=0; j<=1; j++){
           if(pixel(i,j)){
@@ -167,35 +150,57 @@ class Desafios{
       }
     }
     else{ 
-      if(quad>=0){ // Se não tem quadrado ou já apareceu um quadrado à direita, tenta contar outro quadrado
+      if(quad>=0){
         countQuadrado(true); // true lado da direita // false lado da esquerda
       }
-      if(quad<=0){ // Se não tem quadrado ou já apareceu um quadrado à esquerda, tenta contar outro quadrado
+      if(quad<=0){
         cruz=false;
         countQuadrado(false); // se for direita quad é positivo se for esquerda quad é negativo
       }
     }
-
-    if(cruz){ // Quando ler um cruzamento, entra aqui para resolver desafios
+    Serial.print(qlido);
+    Serial.print(" / ");
+    Serial.print(quad);
+    Serial.print(" / ");
+    Serial.println(cruz);
+    if(cruz){
       esp_camera_fb_return(fb);
-      if(quad==0){  // Desafio da ré em que a cruz aparece antes dos quadrados
+      if(quad==0){
+        SerialBT.println("Cruz?");
         fb = esp_camera_fb_get();
-        cruz = confirmCruz(true); // Retorna se realmente tem uma cruz
+        cruz = confirmCruz(true);
         esp_camera_fb_return(fb);
         if(cruz){
+          SerialBT.println("Re?");
           idRe();
         }
       }
-      else if(abs(quad)==1){  // Se há algum quadrado lido
-        jmyself(quad/abs(quad));  // Vira pro lado que esse quadrado está
+      else if(abs(quad)==1){
+        SerialBT.println("90graus");
+        digitalWrite(IN2, LOW);
+        digitalWrite(IN3, LOW);
+        delay(1000);
+        jmyself(quad/abs(quad));
+        digitalWrite(IN2, LOW);
+        digitalWrite(IN3, LOW);
+        delay(1000);
       }
-      else if(abs(quad)>1){ // Entra no desafio da rotatória
+      else if(abs(quad)>1){
+        SerialBT.println("rotatoria");
+        analogWrite(IN2, 0);
+        analogWrite(IN3, 0);
+        SerialBT.print("parar");
+        delay(1000);
         rot();
+        analogWrite(IN2, 0);
+        analogWrite(IN3, 0);
+        SerialBT.print("90");
+        delay(1000);
       }
       fb = esp_camera_fb_get();
-      qlido=0;  // Reseta o lado do quadrado lido
-      quad=0;   // Reseta o numero de quadrados
-      cruz=false; // Reseta o numero de cruzes
+      qlido=0;
+      quad=0;
+      cruz=false;
     } else if (quad == 0 && identificaInversaoCores()){ // Começa o desafio da faixa de pedestre se não tiver nenhum quadrado e identificar a faixa de pedestre
       desafioFaixaPedestre();
     }
@@ -203,13 +208,17 @@ class Desafios{
   private:
   void countQuadrado(int sentido){// true lado da direita // false lado da esquerda
     for(int i=fb->width-1; i>=0; i--){
-      int count=0; // Contador de uns
+      Serial.print(pixel(i, (fb->width-1)*sentido));
+    }
+    Serial.println();
+    for(int i=fb->width-1; i>=0; i--){
+      int count=0;
       while(pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)){
         count++;
-        if(i<=2 || i>=fb->width-3){ // Se o quadrado estiver nas bordas, reseta o count
+        if(i<=2 || i>=fb->width-3){
           count=0;
           if(i>=fb->width-3){
-            while(pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)){ // Enquanto tiver lendo uns dos quadrados, diminui i
+            while(pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)){
               i--;
             }
           }
@@ -220,12 +229,12 @@ class Desafios{
         }
         i--;
       }
-      if(count!=0){ // Se tiver lido algum pixel branco
-        if(count>25){ // E o numero de pixels branco for maior que 25, é um quadrado
-          quad+=2*sentido-1;  // += 1 ou -1 dependendo do sentido
-          qlido=2*sentido-1;  // = 1 ou -1 dependendo do sentido
+      if(count!=0){
+        if(count>25){
+          quad+=2*sentido-1;
+          qlido=2*sentido-1;
         }
-        else if(count>7){ // E o número de pixels for menor que 25, mas maior do que 7, é uma cruz
+        else if(count>7){
           cruz=true;
         }
       }
@@ -235,6 +244,7 @@ class Desafios{
   bool confirmCruz(int sentido){// true lado da direita // false lado da esquerda
     for(int i=fb->width-1; i>=0; i--){
       int count=0;
+      printCamera();
       while(pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)){
         count++;
         i--;
@@ -245,6 +255,16 @@ class Desafios{
     }
     return false;
   }
+  /*
+  void jmyself(int sentido){ // negativo direita // positivo esquerda
+    analogWrite(IN2, (25-(sentido*25))*difMotor);
+    analogWrite(IN3, 25+(sentido*25));
+    delay(1000);
+    analogWrite(IN2, 60);
+    analogWrite(IN3, 60);
+    delay(200);
+  }
+  */
 
   void jmyself(int sentido){ // negativo direita // positivo esquerda
     float linha;
@@ -254,35 +274,51 @@ class Desafios{
     do{  
       analogWrite(IN2, (25-(sentido*25))*difMotor);
       analogWrite(IN3, 25+(sentido*25));
-      delay(100);
+      delay(700);
       fb = esp_camera_fb_get();
       linha = mediaLinha(30,false);
       esp_camera_fb_return(fb);
-    } while((linha < (40 - direcaoGiro*5)) || (linha > (56 + !direcaoGiro*5))); // Enquanto a linha não estiver num range de 16 do centro, continua virando
+      SerialBT.println(linha);
+    } while((linha > (56 + !direcaoGiro*5)) || (linha < (40 - direcaoGiro*5))); // Enquanto a linha não estiver num range de 16 do centro, continua virando
     fb = esp_camera_fb_get();
   }
 
   void rot(){
-    bool s; // Lado para qual a cruz vai estar
+    bool s;
     if(quad>0){
       s=true;
     }
     else{
       s=false;
     }
-    jmyself(quad/abs(quad));  // Vira os primeiros 90°
-    while(abs(quad)>1){ // Faz seguir linha até chegar na saída certa
+    jmyself(quad/abs(quad));
+    analogWrite(IN2, 0);
+    analogWrite(IN3, 0);
+    SerialBT.print("90");
+    delay(1000);
+    
+    fb = esp_camera_fb_get();
+    esp_camera_fb_return(fb);
+    
+    while(abs(quad)>1){
       fb = esp_camera_fb_get();
       float Linhaj=mediaLinha(alturaLeitura, false);
       float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
       float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
+      printCamera();
       ajusteMotor(r);
-      if(confirmCruz(s)){  // Se achar um cruzamento do lado certo, diminui o número de quadrados até ele chegar em 1
+      cruz=confirmCruz(s);
+      if(cruz){
         quad-=(quad/abs(quad));
       }
+      Serial.println(quad);
       esp_camera_fb_return(fb);
     }
-    jmyself(quad);  // Vira na saída certa
+    analogWrite(IN2, 0);
+    analogWrite(IN3, 0);
+    SerialBT.print("parar");
+    delay(1000);
+    jmyself(quad);
   }
 
   void idRe(){
@@ -303,7 +339,9 @@ class Desafios{
       }
       esp_camera_fb_return(fb);
       if(quad!=0){
+        Serial.print("re");
         marchaRe();
+        break;
       }
     }
   }
@@ -320,10 +358,12 @@ class Desafios{
       for(int i=0; i<30; i++){
         count+=pixel(i, (47.5-47.5*quad));
       }
+      Serial.print(count);
       esp_camera_fb_return(fb);
     }
     digitalWrite(IN2, LOW);
     digitalWrite(IN3, LOW);
+    delay(1000);
     analogWrite(IN1, SetPoint*difMotor);
     analogWrite(IN4, SetPoint);
     count=0;
@@ -333,10 +373,12 @@ class Desafios{
       for(int i=60; i<fb->width; i++){
         count+=pixel(i, (47.5-47.5*quad));
       }
+      Serial.println(count);
       esp_camera_fb_return(fb);
     }
     digitalWrite(IN1, LOW);
     digitalWrite(IN4, LOW);
+    delay(1000);
     jmyself(-quad);
   }
 
@@ -358,7 +400,7 @@ class Desafios{
     } else if (countBranco > countPreto) {
       return true;  // Linha é preta
     }
-}
+  }
 
   int identificaFaixaPedestre() {
     int z = 0, j = 0, count = 0;
@@ -398,7 +440,7 @@ class Desafios{
       SerialBT.println("Tudo preto");
       return 0;  // 0 representa que não há linha a ser seguida
     }
-}
+  }
 
   void desafioFaixaPedestre() {
     bool semLinha = false;  // Inicialmente há linha a ser seguida
@@ -450,8 +492,7 @@ class Desafios{
         return;
       }
     }
-}
-
+  }
 };
 
 Desafios des;
@@ -466,7 +507,7 @@ void loop() {
   ajusteMotor(r);
   //printCameraBT();
   //printCamera();
-  //analogWrite(IN2, SetPoint*0.63);
+  //analogWrite(IN2, SetPoint*0.8);
   //analogWrite(IN3, SetPoint);
   esp_camera_fb_return(fb); // esvazia o vetor preenchido pela leitura da camera
 }
@@ -501,3 +542,8 @@ float raio(float i, float j){
   
   return (hip/2)/cos; // raio da circunferencia
 }
+
+
+
+
+
