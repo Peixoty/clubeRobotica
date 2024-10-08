@@ -395,9 +395,9 @@ class Desafios{
     }
 
     //if (countPreto >= countBranco) {
-    if (countBranco/(fb->width) >= 0.78) {
+    if (countBranco/(fb->width) <= 0.78) {
       return false;  // A linha é branca
-    } else if (countBranco > countPreto) {
+    } else {
       return true;  // Linha é preta
     }
   }
