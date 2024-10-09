@@ -9,7 +9,7 @@
 #define CAMERA_MODEL_AI_THINKER  // Has PSRAM
 #include "camera_pins.h"
 
-//BluetoothSerial SerialBT;
+BluetoothSerial SerialBT;
 
 //Configuração dos pinos da câmera
 #define PWDN_GPIO_NUM 32
@@ -34,7 +34,7 @@
 #define IN3 12
 #define IN4 13
 
-#define SetPoint 30 // vel base do motor
+#define SetPoint 35 // vel base do motor
 
 void setup() {
 
@@ -76,13 +76,11 @@ void setup() {
     Serial.printf("Camera init failed with error 0x%x", err);
     return;
   }
-  /*
   if(!SerialBT.begin("ESP32CAM")) {
     Serial.println("Erro ao iniciar o Bluetooth");
   } else {
     Serial.println("Bluetooth iniciado com sucesso. Agora você pode parear com o ESP32CAM.");
   }
-  */
   //inicialização motor
   pinMode(IN1, OUTPUT); 
   pinMode(IN2, OUTPUT); 
@@ -100,7 +98,7 @@ void setup() {
 camera_fb_t *fb = NULL;
 #define disLeituras 20 // distanciamento entre leituras
 #define alturaLeitura 45 // maximo de 48
-#define Carlos 150 // definição doq é preto
+#define Carlos 170 // definição doq é preto
 
 
 #define Roboi (95+9.5/0.1) // distancia da borda da matriz ate o centro do eixo
@@ -117,13 +115,14 @@ void printCamera(){ // printa camera em uma matriz
     }
   }
   Serial.println();
-  delay(2000);
 }
 
 
 bool pixel(int i, int j) {  // função que verifica o valor do pixel
     return (fb->buf[i * 96 + j]>Carlos)?true:false; // converte o valor de 0 a 255 em booleano sendo os pontos brancos=1
 }
+
+int ji;
 
 class Desafios{
   int quad=0, qlido=0;
@@ -162,17 +161,22 @@ class Desafios{
     if(cruz){
       esp_camera_fb_return(fb);
       if(quad==0){
+        SerialBT.println("cruz?");
         fb = esp_camera_fb_get();
         cruz = confirmCruz(true);
         esp_camera_fb_return(fb);
         if(cruz){
+          SerialBT.println("re?");
           idRe();
         }
       }
       else if(abs(quad)==1){
+        
+        SerialBT.println("90");
         jmyself(quad/abs(quad));
       }
       else if(abs(quad)>1){
+        SerialBT.println("rot");
         rot();
       }
       fb = esp_camera_fb_get();
@@ -180,6 +184,7 @@ class Desafios{
       quad=0;
       cruz=false;
     } else if (quad == 0 && identificaInversaoCores()){ // Começa o desafio da faixa de pedestre se não tiver nenhum quadrado e identificar a faixa de pedestre
+      SerialBT.println("faixa");
       desafioFaixaPedestre();
     }
   }
@@ -228,30 +233,28 @@ class Desafios{
     }
     return false;
   }
-  /*
-  void jmyself(int sentido){ // negativo direita // positivo esquerda
-    analogWrite(IN2, (25-(sentido*25))*difMotor);
-    analogWrite(IN3, 25+(sentido*25));
-    delay(1000);
-    analogWrite(IN2, 60);
-    analogWrite(IN3, 60);
-    delay(200);
-  }
-  */
 
   void jmyself(int sentido){ // negativo direita // positivo esquerda
-    float linha;
+    float LinhaA;
     bool direcaoGiro = (sentido == 1)? true:false;
     // Anda por 100ms confere se a linha está alinhada. Repete até ver uma linha com media na coluna 48
-    do{  
-      analogWrite(IN2, (55-(sentido*25))*difMotor);
-      analogWrite(IN3, 55+(sentido*25));
-      delay(300);
+      
+    analogWrite(IN2, (55-(sentido*25))*difMotor);
+    analogWrite(IN3, 55+(sentido*25));
+    delay(300);
+    do{
       fb = esp_camera_fb_get();
-      linha = mediaLinha(30,false);
+      ji=0;
+      LinhaA=mediaLinha(alturaLeitura, false, ji);
+      while(ji<fb->width-1){
+        float LinhaN=mediaLinha(alturaLeitura, false, ji);
+        if(abs(LinhaN-47.5)<abs(LinhaA-47.5)){
+          LinhaA=LinhaN;
+        }
+      }
       esp_camera_fb_return(fb);
       //SerialBT.println(linha);
-    } while((linha > (56 + !direcaoGiro*5)) || (linha < (40 - direcaoGiro*5))); // Enquanto a linha não estiver num range de 16 do centro, continua virando
+    } while((LinhaA > (56 + !direcaoGiro*5)) || (LinhaA < (40 - direcaoGiro*5))); // Enquanto a linha não estiver num range de 16 do centro, continua virando
   }
 
   void rot(){
@@ -267,15 +270,11 @@ class Desafios{
     //esp_camera_fb_return(fb);
     while(abs(quad)>1){
       fb = esp_camera_fb_get();
-      float Linhaj=mediaLinha(alturaLeitura, false);
-      float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
-      float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
-      ajusteMotor(r);
+      seguirLinha(alturaLeitura);
       cruz=confirmCruz(s);
       if(cruz){
         quad-=(quad/abs(quad));
       }
-      Serial.println(quad);
       esp_camera_fb_return(fb);
     }
     jmyself(quad);
@@ -284,10 +283,7 @@ class Desafios{
   void idRe(){
     while(cruz){
       fb = esp_camera_fb_get();
-      float Linhaj=mediaLinha(alturaLeitura, false);
-      float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
-      float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
-      ajusteMotor(r);
+      seguirLinha(alturaLeitura);
       cruz=false;
       countQuadrado(true);
       if(quad==0){
@@ -311,10 +307,7 @@ class Desafios{
     while(count<4){
       count=0;
       fb = esp_camera_fb_get();
-      float Linhaj=mediaLinha(alturaLeitura, false);
-      float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
-      float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
-      ajusteMotor(r);
+      seguirLinha(alturaLeitura);
       for(int i=0; i<30; i++){
         count+=pixel(i, (47.5-47.5*quad));
       }
@@ -336,8 +329,8 @@ class Desafios{
       Serial.println(count);
       esp_camera_fb_return(fb);
     }
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN4, LOW);
+    analogWrite(IN1, 0);
+    analogWrite(IN4, 0);
     delay(1000);
     jmyself(-quad);
   }
@@ -414,11 +407,7 @@ class Desafios{
       fb = esp_camera_fb_get();
 
       // Segue a linha
-      Linhaj = mediaLinha(10, true);     // Coloca o vértice do V na linha 10
-      Linhai = abs(47.5 - Linhaj) + 10;  // transformação da media das colunas na media de linhas
-      r = raio(Linhai, Linhaj);          // manda as coordenadas lidas para o raio
-
-      ajusteMotor(r);
+      seguirLinha(10);
 
       for (j = 0; j < fb->width; j++) {
         if (!pixel(30, j)) {  //Se a 30 linha tem muito pixel preto
@@ -462,18 +451,25 @@ void loop() {
   fb = esp_camera_fb_get(); // preenche o vetor com a leitura atual da camera
   des.checarDesafio();
   //ajusteMotor(erroFx1, fatorErroAngulo(erroFx1, erroFx2)); // ajusta o motor com base no erro de centralização e angulação da linha
-  seguirLinha();
+  seguirLinha(alturaLeitura);
   //printCameraBT();
   //printCamera();
   //analogWrite(IN2, SetPoint*0.8);
   //analogWrite(IN3, SetPoint);
   esp_camera_fb_return(fb); // esvazia o vetor preenchido pela leitura da camera
 }
+void seguirLinha(int alt){
+  ji=0;
+  float LinhajA=mediaLinha(alt, false, ji);
+  while(ji<fb->width-1){
+    float LinhajN=mediaLinha(alt, false, ji);
+    if(abs(LinhajN-47.5)<abs(LinhajA-47.5)){
+      LinhajA=LinhajN;
+    }
+  }
 
-seguirLinha(){
-  float Linhaj=mediaLinha(alturaLeitura, false);
-  float Linhai=abs(47.5-Linhaj)+alturaLeitura; // transformação da media das colunas na media de linhas
-  float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
+  float Linhai=abs(47.5-LinhajA)+alt; // transformação da media das colunas na media de linhas
+  float r=raio(Linhai, LinhajA); // manda as coordenadas lidas para o raio
   ajusteMotor(r);
 }
 
@@ -485,16 +481,24 @@ void ajusteMotor(float r){
   analogWrite(IN3, SetPoint*abs((r-difRodas*2)/r));
   }
 }
-float mediaLinha(int a, bool corLinha){// ponto medio da linha
+float mediaLinha(int a, bool corLinha, int inicio){// ponto medio da linha
   int som=0; // somatorio de colunas
   int peso=0; // numero de uns
-  for(int j=0; j<fb->width; j++){
+  bool p=false;
+  for(int j=inicio; j<fb->width; j++){
     int i=abs(47.5-j)+a;  //j e i fazem uma leitura em v da matriz
     bool x=(corLinha!=pixel(i,j));
     som+=x*j;
     peso+=x;
+    if(x){
+      p=true;
+    }else if(p){
+      ji=j;
+      return som/peso; // media das colunas lidas
+    }
   }
-  return (peso == 0)? 0:som/peso; // media das colunas lidas
+  ji=fb->width;
+  return 0; // media das colunas lidas
 }
 float raio(float i, float j){
   float di, dj, hip, cos, r;
