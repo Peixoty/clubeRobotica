@@ -87,18 +87,18 @@ void setup() {
   pinMode(IN3, OUTPUT); 
   pinMode(IN4, OUTPUT);
 
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, LOW);
+  analogWrite(IN1, 0);
+  analogWrite(IN2, 0);
 
-  digitalWrite(IN4, LOW);
-  digitalWrite(IN3, LOW);
+  analogWrite(IN4, 0);
+  analogWrite(IN3, 0);
 
 }
 
 camera_fb_t *fb = NULL;
 #define disLeituras 20 // distanciamento entre leituras
 #define alturaLeitura 45 // maximo de 48
-#define Carlos 170 // definição doq é preto
+#define Carlos 150 // definição doq é preto
 
 
 #define Roboi (95+9.5/0.1) // distancia da borda da matriz ate o centro do eixo
@@ -189,7 +189,7 @@ class Desafios{
     }
   }
   private:
-  void countQuadrado(int sentido){// true lado da direita // false lado da esquerda
+  void countQuadrado(int sentido){ // true lado da direita // false lado da esquerda
     for(int i=fb->width-1; i>=0; i--){
       int count=0;
       while(pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)){
@@ -220,7 +220,7 @@ class Desafios{
     }
   }
 
-  bool confirmCruz(int sentido){// true lado da direita // false lado da esquerda
+  bool confirmCruz(int sentido){ // true lado da direita // false lado da esquerda
     for(int i=fb->width-1; i>=0; i--){
       int count=0;
       while((pixel(i,(fb->width-1)*sentido) || pixel(i,(fb->width-3)*sentido+1)) && i!=0){
@@ -268,6 +268,7 @@ class Desafios{
     jmyself(quad/abs(quad));
     //fb = esp_camera_fb_get();
     //esp_camera_fb_return(fb);
+    Serial.println(quad);
     while(abs(quad)>1){
       fb = esp_camera_fb_get();
       seguirLinha(alturaLeitura);
@@ -275,6 +276,10 @@ class Desafios{
       if(cruz){
         quad-=(quad/abs(quad));
       }
+      
+      delay(5000);
+      printCamera();
+      Serial.println(quad);
       esp_camera_fb_return(fb);
     }
     jmyself(quad);
@@ -458,6 +463,7 @@ void loop() {
   //analogWrite(IN3, SetPoint);
   esp_camera_fb_return(fb); // esvazia o vetor preenchido pela leitura da camera
 }
+
 void seguirLinha(int alt){
   ji=0;
   float LinhajA=mediaLinha(alt, false, ji);
