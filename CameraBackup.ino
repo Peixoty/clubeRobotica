@@ -243,15 +243,35 @@ class Desafios{
     float linha;
     bool direcaoGiro = (sentido == 1)? true:false;
     // Anda por 100ms confere se a linha está alinhada. Repete até ver uma linha com media na coluna 48
+
+    analogWrite(IN2, 40);
+    analogWrite(IN3, 40);
+    delay(150);
+    analogWrite(IN2, 50*(!direcaoGiro));
+    analogWrite(IN3, 50*direcaoGiro);
+    delay(500);
+
     do{  
-      analogWrite(IN2, (55-(sentido*25))*difMotor);
-      analogWrite(IN3, 55+(sentido*25));
-      delay(300);
+      analogWrite(IN2, 45*(!direcaoGiro));
+      analogWrite(IN3, 45*direcaoGiro);
+
       fb = esp_camera_fb_get();
-      linha = mediaLinha(30,false);
+      linha = mediaLinha(20,false);
+      SerialBT.println(linha);
       esp_camera_fb_return(fb);
-      //SerialBT.println(linha);
-    } while((linha > (56 + !direcaoGiro*5)) || (linha < (40 - direcaoGiro*5))); // Enquanto a linha não estiver num range de 16 do centro, continua virando
+
+    } while((linha > (56 + direcaoGiro*5)) || (linha < (40 - !direcaoGiro*5))); // Enquanto a linha não estiver num range de 16 do centro, continua virando
+
+    analogWrite(IN2, 0);
+    analogWrite(IN3, 0);
+
+    delay(500);
+
+    analogWrite(IN2, 70);
+    analogWrite(IN3, 70);
+    delay(1000);
+
+
   }
 
   void rot(){
