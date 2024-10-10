@@ -34,7 +34,7 @@
 #define IN3 12
 #define IN4 13
 
-#define SetPoint 30 // vel base do motor
+#define SetPoint 45 // vel base do motor
 
 void setup() {
 
@@ -107,7 +107,7 @@ camera_fb_t *fb = NULL;
 #define Roboj 47.5 // centro do eixo em coordenadas
 #define difRodas (6/0.1) // distancia das rodas em pixels
 
-#define difMotor 0.8 // balanceamento de motor
+#define difMotor 0.73 // balanceamento de motor
 
 void printCamera(){ // printa camera em uma matriz
   for(int i=0; i<fb->width; i++){
@@ -244,15 +244,15 @@ class Desafios{
     bool direcaoGiro = (sentido == 1)? true:false;
     // Anda por 100ms confere se a linha está alinhada. Repete até ver uma linha com media na coluna 48
 
-    analogWrite(IN2, 40);
-    analogWrite(IN3, 40);
+    analogWrite(IN2, SetPoint*difMotor);
+    analogWrite(IN3, SetPoint);
     delay(150);
-    analogWrite(IN2, 50*(!direcaoGiro));
+    analogWrite(IN2, 50*(!direcaoGiro)*difMotor);
     analogWrite(IN3, 50*direcaoGiro);
     delay(500);
 
     do{  
-      analogWrite(IN2, 45*(!direcaoGiro));
+      analogWrite(IN2, 45*(!direcaoGiro)*difMotor);
       analogWrite(IN3, 45*direcaoGiro);
 
       fb = esp_camera_fb_get();
@@ -266,10 +266,6 @@ class Desafios{
     analogWrite(IN3, 0);
 
     delay(500);
-
-    analogWrite(IN2, 70);
-    analogWrite(IN3, 70);
-    delay(1000);
 
 
   }
