@@ -267,6 +267,7 @@ class Desafios{
 
     delay(500);
 
+    parteMotor(70);
 
   }
 
@@ -524,7 +525,15 @@ float raio(float i, float j){
   return (hip/2)/cos; // raio da circunferencia
 }
 
+void parteMotor(int sp){
+  int i;
+  for(i = 1; i <= sp; i++){
+    analogWrite(IN2, i);
+    analogWrite(IN3, i);
+    delay(50);
+  }
 
-
+  delay(800);
+}
 
 
