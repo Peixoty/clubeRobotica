@@ -184,7 +184,7 @@ class Desafios{
     }
   }
 
-  void jmyself(int sentido){ // negativo direita // positivo esquerda
+void jmyself(int sentido){ // negativo direita // positivo esquerda
     float LinhajA;
     bool direcaoGiro = (sentido == 1)? true:false;
     // Anda por 100ms confere se a linha está alinhada. Repete até ver uma linha com media na coluna 48
@@ -196,8 +196,8 @@ class Desafios{
     delay(500);
 
     do{  
-      analogWrite(IN2, 45*direcaoGiro*difMotor);
-      analogWrite(IN3, 45*(!direcaoGiro));
+      analogWrite(IN2, 50*direcaoGiro*difMotor);
+      analogWrite(IN3, 50*(!direcaoGiro));
       fb = esp_camera_fb_get();
       ji=0;
       LinhajA=mediaLinha(20, false, ji);
@@ -217,8 +217,7 @@ class Desafios{
 
     delay(500);
 
-    parteMotor(45);
-
+    parteMotor(70);
   }
 };
 
@@ -297,5 +296,6 @@ void parteMotor(int sp){
     analogWrite(IN3, i);
     delay(50);
   }
+  delay(800);
 }
 
