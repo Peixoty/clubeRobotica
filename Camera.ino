@@ -182,7 +182,7 @@ class Desafios{
       qlido=0;
       quad=0;
       cruz=false;
-    } else if (quad == 0 && identificaInversaoCores()){ // Começa o desafio da faixa de pedestre se não tiver nenhum quadrado e identificar a faixa de pedestre
+    } else if (identificaInversaoCores() == 1){ // Identifica se tem inversão de cores
       SerialBT.println("faixa");
       desafioFaixaPedestre();
     }
@@ -279,7 +279,7 @@ class Desafios{
     Serial.println(quad);
     while(abs(quad)>1){
       fb = esp_camera_fb_get();
-      seguirLinha(alturaLeitura);
+      seguirLinha(alturaLeitura, false);
       cruz=confirmCruz(s);
       if(cruz){
         quad-=(quad/abs(quad));
@@ -296,7 +296,7 @@ class Desafios{
   void idRe(){
     while(cruz){
       fb = esp_camera_fb_get();
-      seguirLinha(alturaLeitura);
+      seguirLinha(alturaLeitura, false);
       cruz=false;
       countQuadrado(true);
       if(quad==0){
@@ -320,7 +320,7 @@ class Desafios{
     while(count<4){
       count=0;
       fb = esp_camera_fb_get();
-      seguirLinha(alturaLeitura);
+      seguirLinha(alturaLeitura, false);
       for(int i=0; i<30; i++){
         count+=pixel(i, (47.5-47.5*quad));
       }
@@ -348,10 +348,10 @@ class Desafios{
     jmyself(-quad);
   }
 
-  bool identificaInversaoCores() {  // Conta número de brancos na vertical dos dois lados
+  int identificaInversaoCores() {  // Conta número de brancos na vertical dos dois lados
     int i;
     int sensor = 0, numSensoresAtivos = 0; // Réplica do sensor de cor usando a câmera
-    int j[5] = {15,31,47,63,79};  // Colunas que serão verificados (como a matriz vai de 0 a 95, subtrai 1)
+    int j[5] = {15,31,47,63,79};  // Colunas que serão verificadas (como a matriz vai de 0 a 95, subtrai 1)
     int countBranco[5] = {0,0,0,0,0}; // Número de brancos em cada coluna
     bool sensoresAtivados[5];
 
@@ -362,7 +362,7 @@ class Desafios{
           countBranco[sensor]++;
         }
       }
-      sensoresAtivados[sensor] = (countBranco[sensor] > 12)? 1:0;
+      sensoresAtivados[sensor] = (countBranco[sensor] > 12)? 1:0; // > 12 valor para barrar eventuais pixeis brancos na tela ("ruído")
       numSensoresAtivos += sensoresAtivados[sensor]; // Conta número de "sensores" ativos
       sensor++;
     }
@@ -373,9 +373,11 @@ class Desafios{
     // 4 Faixas -> Idealmente o caso correto de inversão de cores
     // 5 Faixas -> Cruzamento (caso a largura dele for maior que 12)
     if(numSensoresAtivos > 2 && sensoresAtivados[2] == 0){
-      return true;
+      return 1;
+    } else if(numSensoresAtivos == 1){ // Esperando que ele leia a linha em só um sensor (Provável fonte de erro caso a linha seja identificada por 2)
+      return 2;
     } else{
-      return false;
+      return 0;
     }
 
   }
@@ -427,14 +429,15 @@ class Desafios{
 
     esp_camera_fb_return(fb);
 
+    // Segue linha preta
     while (!semLinha) {  // Enquanto tiver linha a ser seguida
       fb = esp_camera_fb_get();
 
       // Segue a linha
-      seguirLinha(10);
+      seguirLinha(10, true); // Linha preta
 
       for (j = 0; j < fb->width; j++) {
-        if (!pixel(30, j)) {  //Se a 30 linha tem muito pixel preto
+        if (!pixel(30, j)) {  //Se a linha 30 tem muito pixel preto
           count++;
         }
       }
@@ -449,22 +452,22 @@ class Desafios{
       esp_camera_fb_return(fb);
     }
 
+    // Para por 5 segundos na faixa de pedestre
     analogWrite(IN2, 0);
     analogWrite(IN3, 0);
     delay(5000);
 
-    while (semLinha) {  // Enquanto ele não estiver enxergando a linha
+    fb = esp_camera_fb_get();
+    estadoLinha = identificaInversaoCores();  // Se == 2, ele está enxergando a linha de volta
+    esp_camera_fb_return(fb);
+    while (estadoLinha != 2) {  // Enquanto ele não estiver enxergando a linha de volta
       fb = esp_camera_fb_get();
-      estadoLinha = identificaFaixaPedestre();
 
-      if (estadoLinha == 0 || estadoLinha == 1) {  // Se tiver faixa de pedestre ou tudo preto, continua reto
-        analogWrite(IN2, 120);
-        analogWrite(IN3, 120);
-        esp_camera_fb_return(fb);
-      } else if (estadoLinha == 2) {  // Se achar a linha de volta, volta a seguir linha
-        esp_camera_fb_return(fb);
-        return;
-      }
+      estadoLinha = identificaInversaoCores();
+      analogWrite(IN2, 120*difMotor);
+      analogWrite(IN3, 120);
+
+      esp_camera_fb_return(fb);
     }
   }
 
@@ -474,11 +477,11 @@ Desafios des;
 void loop() {
   fb = esp_camera_fb_get(); // preenche o vetor com a leitura atual da camera
   des.checarDesafio();
-  seguirLinha(alturaLeitura);
+  seguirLinha(alturaLeitura, false);
   esp_camera_fb_return(fb); // esvazia o vetor preenchido pela leitura da camera
 }
 
-void seguirLinha(int alt){
+void seguirLinha(int alt, bool corLinha){ // corLinha -> false = branco; true = preto;
   float Linhaj=mediaLinha(alt, false);
   float Linhai=abs(47.5-Linhaj)+alt; // transformação da media das colunas na media de linhas
   float r=raio(Linhai, Linhaj); // manda as coordenadas lidas para o raio
@@ -497,7 +500,7 @@ float mediaLinha(int a, bool corLinha){// ponto medio da linha
   int peso=0; // numero de uns
   for(int j=0; j<fb->width; j++){
     int i=abs(47.5-j)+a;  //j e i fazem uma leitura em v da matriz
-    bool x=(corLinha!=pixel(i,j));
+    bool x=(corLinha!=pixel(i,j)); // Operação XOR para pegar a média da matriz quandos a linha tem cor diferente
     som+=x*j;
     peso+=x;    
   }
