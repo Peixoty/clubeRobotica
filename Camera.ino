@@ -170,11 +170,11 @@ class Desafios{
           idRe();
         }
       }
-      else if(abs(quad)==1){ //
+      else if(abs(quad)==1){ // E leu um quadrado, faz 90 graus
         SerialBT.println("90");
         jmyself(quad/abs(quad));
       }
-      else if(abs(quad)>1){
+      else if(abs(quad)>1){ // E leu mais que um quadrado, faz a rotatória
         SerialBT.println("rot");
         rot();
       }
