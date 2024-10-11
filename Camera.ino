@@ -236,28 +236,31 @@ class Desafios{
   void jmyself(int sentido){ // negativo direita // positivo esquerda
       float Linhaj;
       bool direcaoGiro = (sentido > 0)? true:false;
-      // Anda por 100ms confere se a linha está alinhada. Repete até ver uma linha com media na coluna 48
-      analogWrite(IN2, 50*difMotor);
-      analogWrite(IN3, 50);
-      delay(400);
-      analogWrite(IN2, 50*(!direcaoGiro)*difMotor);
-      analogWrite(IN3, 50*direcaoGiro);
-      delay(500);
+      bool momentosIniciais = true; // Caso esteja nas primeira medições, ele não lê a parte de cima do cruzamento cruz como jmyself concluído
+      int contagemMomentos = 0;      
 
-      do{  
+      posicionaRoboCruz();  // Posiciona a câmera em cima da cruz
+
+      do{
+        contagemMomentos++;
+        if(contagemMomentos > 10){ // Numero de ms para começar a valer o valor de linhaj. Calibrar isso!
+          momentosIniciais = false;
+        }
+
         analogWrite(IN2, 50*(!direcaoGiro)*difMotor);
         analogWrite(IN3, 50*direcaoGiro);
+        delay(30); // Mantemos o controle de quanto tempo dura o loop, mantendo a espera o suficiente para ele ler a media da linha
+
         fb = esp_camera_fb_get();
         Linhaj=mediaLinha(20, false);
-        //SerialBT.println(LinhajA);
         esp_camera_fb_return(fb);
 
-      } while((Linhaj > (56 + direcaoGiro*5)) || (Linhaj < (40 - !direcaoGiro*5))); // Enquanto a linha não estiver num range de 16 do centro, continua virando
+      } while(!momentosIniciais && ((Linhaj > (56 + direcaoGiro*5)) || (Linhaj < (40 - !direcaoGiro*5)))); // Enquanto a linha não estiver num range do centro e não está nos momentos iniciais, continua virando
 
       analogWrite(IN2, 0);
       analogWrite(IN3, 0);
 
-      delay(500);
+      delay(400);
 
       parteMotor(70);
   }
@@ -511,3 +514,16 @@ void parteMotor(int sp){
   delay(400);
 }
 
+void posicionaRoboCruz(){
+  int linha = 40, coluna;
+  int count = 0;
+
+  while(count < 30){
+    count = 0;
+    for(coluna = 0; coluna < fb->width; coluna++){
+      if(pixel(linha,coluna)){
+        count++;  // Número de brancos na linha
+      }
+    }
+  }
+}
