@@ -348,25 +348,36 @@ class Desafios{
     jmyself(-quad);
   }
 
-  bool identificaInversaoCores() {
-    int j;
-    int countPreto = 0, countBranco = 0;
+  bool identificaInversaoCores() {  // Conta número de brancos na vertical dos dois lados
+    int i;
+    int sensor = 0, numSensoresAtivos = 0; // Réplica do sensor de cor usando a câmera
+    int j[5] = {15,31,47,63,79};  // Colunas que serão verificados (como a matriz vai de 0 a 95, subtrai 1)
+    int countBranco[5] = {0,0,0,0,0}; // Número de brancos em cada coluna
+    bool sensoresAtivados[5];
 
-    // Faz a contagem dos pixels na linha 10
-    for (j = 0; j < fb->width; j++) {
-      if (pixel(10, j)) {
-        countBranco++;
-      } else {
-        countPreto++;
+    //Armazena os counts de branco 
+    while(sensor < 5){
+      for(i = 0; i < fb->width){
+        if(pixel(i,j[sensor])){
+          countBranco[sensor]++;
+        }
       }
+      sensoresAtivados[sensor] = (countBranco[sensor] > 12)? 1:0;
+      numSensoresAtivos += sensoresAtivados[sensor]; // Conta número de "sensores" ativos
+      sensor++;
     }
 
-    //if (countPreto >= countBranco) {
-    if (countBranco/(fb->width) <= 0.78) {
-      return false;  // A linha é branca
-    } else {
-      return true;  // Linha é preta
+    // 1 Faixa  -> Só linha principal
+    // 2 Faixas -> Linha principal e quadrado
+    // 3 Faixas -> Laterais são brancas e garante que se a linha estiver entre 2 faixas e apareça um quadrado não leia como inversão de cores
+    // 4 Faixas -> Idealmente o caso correto de inversão de cores
+    // 5 Faixas -> Cruzamento (caso a largura dele for maior que 12)
+    if(numSensoresAtivos > 2 && sensoresAtivados[2] == 0){
+      return true;
+    } else{
+      return false;
     }
+
   }
 
   int identificaFaixaPedestre() {
