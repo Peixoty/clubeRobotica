@@ -474,6 +474,7 @@ class Desafios{
 };
 
 Desafios des;
+
 void loop() {
   fb = esp_camera_fb_get(); // preenche o vetor com a leitura atual da camera
   des.checarDesafio();
