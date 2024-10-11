@@ -357,7 +357,7 @@ class Desafios{
 
     //Armazena os counts de branco 
     while(sensor < 5){
-      for(i = 0; i < fb->width){
+      for(i = 0; i < fb->width, i++){
         if(pixel(i,j[sensor])){
           countBranco[sensor]++;
         }
